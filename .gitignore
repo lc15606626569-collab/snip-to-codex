@@ -1,0 +1,7 @@
+/plugins/snip-to-codex/bin/
+/dist/
+/test-results/
+*.user
+*.suo
+.DS_Store
+Thumbs.db

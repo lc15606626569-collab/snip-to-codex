@@ -1,0 +1,20 @@
+{
+  "name": "snip-to-codex",
+  "version": "1.1.0",
+  "description": "Windows region screenshots with a hotkey, clipboard attachment to Codex, and selected-image reading.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "截图到 Codex",
+    "shortDescription": "快捷键框选截图，自动粘贴到聊天输入框。",
+    "longDescription": "Windows 截图助手，提供三步使用引导和离线图文教程。Ctrl+Alt+S 框选，Enter 确认，尝试将图片粘贴到 Codex 输入框。也可让 Codex 读取最近一次截图。",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["请读取我最近一次截取的图片。", "帮我框选截图并分析。"],
+    "brandColor": "#0A6955",
+    "screenshots": ["./assets/welcome.png", "./assets/selection.png"]
+  }
+}

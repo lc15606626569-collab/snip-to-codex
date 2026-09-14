@@ -1,0 +1,35 @@
+name: Windows build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows application
+        shell: powershell
+        run: ./plugins/snip-to-codex/scripts/build.ps1
+      - name: Verify selection and image output
+        shell: powershell
+        run: |
+          $exe=Join-Path $PWD 'plugins/snip-to-codex/bin/SnipToCodex.exe'
+          $results=Join-Path $PWD 'test-results'
+          $p=Start-Process $exe -ArgumentList @('--self-test', ('"'+$results+'"')) -WindowStyle Hidden -PassThru
+          if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id;throw 'Test timed out'}
+          if($p.ExitCode -ne 0){throw 'Tests failed'}
+          Get-Content (Join-Path $results 'self-test.txt')
+      - name: Package release
+        shell: powershell
+        run: ./scripts/package.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnipToCodex-windows-x64
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt

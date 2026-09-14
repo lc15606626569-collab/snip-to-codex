@@ -1,0 +1,12 @@
+---
+name: snip-to-codex
+description: Windows region screenshots and reading the latest image explicitly captured with the Snip to Codex helper. Use when the user asks to screenshot a region, start this screenshot helper, or read its most recent screenshot.
+---
+
+This plugin includes a Windows tray helper and an interactive capture command. Resolve the plugin root two directories above this SKILL.md directory. If `bin/SnipToCodex.exe` is absent (as in a Git source install), run `scripts/build.ps1` with Windows PowerShell first. The app is Windows x64 only. `docs/guide.html` is the offline tutorial, and `docs/使用教程.md` is its readable companion; use these when teaching the user how to install or operate the helper.
+
+- To start the helper, run `bin/SnipToCodex.exe` with Start-Process and WindowStyle Hidden. It is single-instance. Ctrl+Alt+S opens region selection; Ctrl+Alt+F8 is a fallback if occupied. Enter or the Done button confirms; Escape/right-click cancels. A confirmed capture is saved under `%LOCALAPPDATA%/SnipToCodex/Captures`, copied to the clipboard, and pasted into the visible Codex composer when it can be identified. The user sends the message themselves. On paste failure, explain Ctrl+V fallback.
+- When asked to capture now for analysis, run `scripts/capture.ps1 -OutputPath <absolute PNG path>` through PowerShell. Tell the user that a selection overlay will open. Poll the process while the user selects; cancellation means stop, not retry. This command returns the selected image's path without pasting into the composer. Open that exact file with the available image-view tool before analyzing it.
+- When explicitly asked to read the most recent screenshot, list only PNGs inside `%LOCALAPPDATA%/SnipToCodex/Captures`, select the newest by LastWriteTime, and open it with the image-view tool. Report its capture time to avoid silently substituting a stale image. If no image exists, offer the region selection workflow. Never treat arbitrary clipboard contents or other screenshots as authorized inputs.
+
+Only the hotkey/menu or an explicit capture request triggers capture; there is no background screenshot collection. This is a local helper, not an embedded toolbar button or a direct upload API. Successful key dispatch alone does not establish successful attachment or message delivery. New plugin skills may require a new Codex task after installation.

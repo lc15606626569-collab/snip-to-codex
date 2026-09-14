@@ -1,0 +1,20 @@
+{
+  "name": "snip-to-codex-community",
+  "interface": {
+    "displayName": "Snip To Codex Community"
+  },
+  "plugins": [
+    {
+      "name": "snip-to-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/snip-to-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
