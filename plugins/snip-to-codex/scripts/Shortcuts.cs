@@ -78,7 +78,7 @@ sealed class FloatingScissors:IDisposable {
         const int size=40,gap=10;
         if(available.Width<size||available.Height<size)return Rectangle.Empty;
         int y=Math.Max(available.Top,Math.Min(available.Bottom-size,editor.Bottom-size));
-        Rectangle right=new Rectangle(editor.Right+gap,y,size,size);if(available.Contains(right))return right;
+        Rectangle right=new Rectangle(editor.Right+gap+8,y,size,size);if(available.Contains(right))return right;
         Rectangle left=new Rectangle(editor.Left-gap-size,y,size,size);if(available.Contains(left))return left;
         Rectangle above=new Rectangle(Math.Max(available.Left,Math.Min(available.Right-size,editor.Right-size)),editor.Top-size-gap,size,size);return available.Contains(above)?above:Rectangle.Empty;
     }
