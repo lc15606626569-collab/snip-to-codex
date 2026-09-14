@@ -19,6 +19,8 @@ static class Native {
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle,out WindowRect rect);
+    [StructLayout(LayoutKind.Sequential)] public struct WindowRect {public int Left,Top,Right,Bottom;public Rectangle Rectangle{get{return Rectangle.FromLTRB(Left,Top,Right,Bottom);}}}
 }
 
 static class Program {
@@ -55,6 +57,9 @@ static class Program {
         } catch(Exception e) { Log(e.ToString()); MessageBox.Show("程序未能完成操作：\n"+e.Message+"\n\n可在截图文件夹的上一级查看 status.txt。","截图到 Codex",MessageBoxButtons.OK,MessageBoxIcon.Warning); return 1; }
     }
     public static Bitmap Capture() {
+        using(var signal=new EventWaitHandle(false,EventResetMode.ManualReset,"Local\\SnipToCodex.Capture")) {
+        signal.Set();try {
+        Thread.Sleep(300);
         Rectangle bounds=SystemInformation.VirtualScreen;
         using(Bitmap desktop=new Bitmap(bounds.Width,bounds.Height,PixelFormat.Format32bppArgb)) {
             using(Graphics g=Graphics.FromImage(desktop)) g.CopyFromScreen(bounds.Location,Point.Empty,bounds.Size,CopyPixelOperation.SourceCopy);
@@ -62,6 +67,8 @@ static class Program {
                 if(form.ShowDialog()!=DialogResult.OK) return null;
                 return desktop.Clone(form.Selection,PixelFormat.Format32bppArgb);
             }
+        }
+        } finally {signal.Reset();}
         }
     }
     public static void Save(Bitmap image,string path) {
@@ -73,6 +80,7 @@ static class Program {
         DataDir=Path.Combine(folder,"settings-test");
         Settings.AutoPaste=false;if(Settings.AutoPaste)throw new Exception("Clipboard-only preference failed");
         Settings.AutoPaste=true;if(!Settings.AutoPaste)throw new Exception("Auto-paste preference failed");
+        ShortcutTests.Run();
         using(Bitmap b=new Bitmap(300,200)) {
             using(Graphics g=Graphics.FromImage(b)) {g.Clear(Color.Navy);g.FillRectangle(Brushes.Lime,40,50,80,70);}
             Rectangle r=SnipForm.Normalize(new Point(120,120),new Point(40,50),b.Size);
@@ -101,7 +109,7 @@ static class Program {
 }
 
 static class Bridge {
-    static bool IsTarget(IntPtr handle) {
+    public static bool IsTarget(IntPtr handle) {
         if(handle==IntPtr.Zero) return false;
         try {
             uint id;Native.GetWindowThreadProcessId(handle,out id);
@@ -153,25 +161,37 @@ static class Bridge {
 
 sealed class HotKeyWindow:NativeWindow,IDisposable {
     public event EventHandler Pressed;
-    public string Shortcut;
-    public HotKeyWindow() {
+    int activeId;public HotkeyChoice Current{get;private set;}
+    public string Shortcut{get{return activeId==0?"未设置快捷键":Current.Label;}}
+    public HotKeyWindow(bool registerDefault=true) {
         CreateHandle(new CreateParams());
-        if(Native.RegisterHotKey(Handle,1,0x4003,(uint)Keys.S)) Shortcut="Ctrl + Alt + S";
-        else if(Native.RegisterHotKey(Handle,1,0x4003,(uint)Keys.F8)) Shortcut="Ctrl + Alt + F8";
-        else Shortcut="快捷键已被占用，请双击托盘图标";
+        Current=HotkeyChoice.Default;
+        if(registerDefault){string error;var desired=Settings.Shortcut;
+            if(!Change(desired,false,out error) && !Change(HotkeyChoice.Default,false,out error))Change(new HotkeyChoice(3,Keys.F8),false,out error);
+        }
     }
-    protected override void WndProc(ref Message m) {if(m.Msg==0x0312 && Pressed!=null) Pressed(this,EventArgs.Empty);base.WndProc(ref m);}
-    public void Dispose(){Native.UnregisterHotKey(Handle,1);DestroyHandle();}
+    public bool Change(HotkeyChoice choice,bool persist,out string error){
+        error=null;if(!choice.Valid){error="请使用 Ctrl 或 Alt，搭配字母、数字或功能键。";return false;}
+        bool same=activeId!=0 && Current.Equals(choice);int next=activeId==1?2:1;
+        if(!same && !Native.RegisterHotKey(Handle,next,choice.Modifiers|0x4000,(uint)choice.Key)){error="这个快捷键已被其他程序占用，请换一组。原快捷键仍可使用。";return false;}
+        try{if(persist)Settings.Shortcut=choice;}catch(Exception e){if(!same)Native.UnregisterHotKey(Handle,next);error="设置未能保存，原快捷键已保留。"+e.Message;return false;}
+        if(!same){if(activeId!=0)Native.UnregisterHotKey(Handle,activeId);activeId=next;Current=choice;}
+        return true;
+    }
+    protected override void WndProc(ref Message m) {if(m.Msg==0x0312 && m.WParam.ToInt32()==activeId && Pressed!=null) Pressed(this,EventArgs.Empty);base.WndProc(ref m);}
+    public void Dispose(){if(activeId!=0)Native.UnregisterHotKey(Handle,activeId);DestroyHandle();}
 }
 
 sealed class TrayContext:ApplicationContext {
-    NotifyIcon tray; HotKeyWindow hotkey; bool busy; WelcomeForm welcome;
+    NotifyIcon tray; HotKeyWindow hotkey; bool busy,configuring; WelcomeForm welcome;
+    FloatingScissors floating;ToolStripMenuItem captureMenu;
     EventWaitHandle quitEvent,showEvent; System.Windows.Forms.Timer signals;
     public TrayContext(bool quiet) {
         hotkey=new HotKeyWindow();hotkey.Pressed+=(s,e)=>BeginCapture();
         var menu=new ContextMenuStrip();
         menu.Font=Theme.Body;menu.BackColor=Theme.Paper;menu.ForeColor=Theme.Ink;
-        menu.Items.Add("截图到 Codex（"+hotkey.Shortcut+"）",null,(s,e)=>BeginCapture());
+        captureMenu=new ToolStripMenuItem("截图到 Codex（"+hotkey.Shortcut+"）",null,(s,e)=>BeginCapture());menu.Items.Add(captureMenu);
+        menu.Items.Add("更改截图快捷键",null,(s,e)=>ConfigureShortcut());
         menu.Items.Add("打开使用面板",null,(s,e)=>ShowWelcome());
         menu.Items.Add("查看图文教程",null,(s,e)=>Theme.OpenGuide());
         menu.Items.Add("打开截图文件夹",null,(s,e)=>{Directory.CreateDirectory(Program.CaptureDir);Process.Start("explorer.exe",Program.CaptureDir);});
@@ -179,17 +199,20 @@ sealed class TrayContext:ApplicationContext {
         menu.Items.Add("退出",null,(s,e)=>ExitThread());
         tray=new NotifyIcon();tray.Icon=Theme.MakeIcon();tray.Text="截图到 Codex | "+hotkey.Shortcut;tray.ContextMenuStrip=menu;tray.Visible=true;
         tray.DoubleClick+=(s,e)=>BeginCapture();
+        floating=new FloatingScissors(()=>busy,(target)=>BeginCapture(target),menu);floating.Shortcut=hotkey.Shortcut;
         quitEvent=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\SnipToCodex.Quit");
         showEvent=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\SnipToCodex.Show");
         signals=new System.Windows.Forms.Timer();signals.Interval=250;signals.Tick+=(s,e)=>{if(quitEvent.WaitOne(0)){ExitThread();return;}if(showEvent.WaitOne(0))ShowWelcome();};signals.Start();
         Program.Log("ready; hotkey="+hotkey.Shortcut);
         if(!quiet)ShowWelcome();
     }
-    void ShowWelcome(){if(welcome==null || welcome.IsDisposed)welcome=new WelcomeForm(hotkey.Shortcut,BeginCapture);welcome.Show();welcome.Activate();}
-    void BeginCapture() {
-        if(busy)return;busy=true;
+    void ShowWelcome(){if(welcome==null || welcome.IsDisposed)welcome=new WelcomeForm(hotkey.Shortcut,()=>BeginCapture(),ConfigureShortcut,()=>floating.RefreshVisibility());welcome.Show();welcome.Activate();}
+    void ConfigureShortcut(){if(configuring)return;configuring=true;try{using(var dialog=new ShortcutForm(hotkey.Current,(choice)=>{string error;if(!hotkey.Change(choice,true,out error))return error;captureMenu.Text="截图到 Codex（"+hotkey.Shortcut+"）";tray.Text="截图到 Codex | "+hotkey.Shortcut;floating.Shortcut=hotkey.Shortcut;if(welcome!=null&&!welcome.IsDisposed)welcome.SetShortcut(hotkey.Shortcut);Program.Log("shortcut saved; "+hotkey.Shortcut);return null;}))dialog.ShowDialog(welcome!=null&&welcome.Visible?welcome:null);}finally{configuring=false;}}
+    void BeginCapture(IntPtr requestedTarget=default(IntPtr)) {
+        if(busy||configuring)return;busy=true;
         try {
-            IntPtr target=Bridge.Target();
+            IntPtr target=requestedTarget!=IntPtr.Zero?requestedTarget:Bridge.Target();
+            floating.HideForCapture();
             if(welcome!=null && welcome.Visible){welcome.Hide();Thread.Sleep(160);}
             using(Bitmap image=Program.Capture()) {
                 if(image==null) {Program.Log("cancelled");return;}
@@ -203,7 +226,7 @@ sealed class TrayContext:ApplicationContext {
         } catch(Exception e) {Program.Log(e.ToString());tray.ShowBalloonTip(4000,"截图未完成",e.Message,ToolTipIcon.Warning);}
         finally {busy=false;}
     }
-    protected override void ExitThreadCore(){signals.Stop();signals.Dispose();quitEvent.Dispose();showEvent.Dispose();if(welcome!=null)welcome.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();hotkey.Dispose();base.ExitThreadCore();}
+    protected override void ExitThreadCore(){signals.Stop();signals.Dispose();quitEvent.Dispose();showEvent.Dispose();floating.Dispose();if(welcome!=null)welcome.Dispose();tray.Visible=false;tray.Icon.Dispose();tray.Dispose();hotkey.Dispose();base.ExitThreadCore();}
 }
 
 sealed class SnipForm:Form {

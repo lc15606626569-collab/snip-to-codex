@@ -1,6 +1,6 @@
 # Validation and compatibility
 
-## Verified locally for v1.1.0
+## Verified locally for v1.2.0
 
 - Compiles on Windows using the .NET Framework x64 compiler without package installation.
 - Reverse dragging and clipping coordinates produce the expected PNG dimensions and pixels.
@@ -12,6 +12,14 @@
 - Plugin manifest and skill frontmatter pass their validators.
 
 The project includes Windows CI for compilation, selection tests, and packaging. A passing local test does not imply that the remote CI run has already passed; check the repository's Actions page for its current status.
+
+## Added checks in v1.2.0
+
+- Real Windows hotkey registration detects a competing registration, preserves the old binding and saved preference, and releases the old combination after a successful change.
+- Invalid shortcut files fall back to the default; custom choices and scissors visibility persist in an isolated test directory.
+- Floating button placement stays outside the editor with negative monitor origins and narrow windows.
+- The scissors button was located next to the actual current desktop composer. Clicking it opened the capture overlay, hid the scissors, and Escape cancelled without saving an image.
+- Shortcut settings and welcome UI are rendered and inspected. Public button illustrations use synthetic input content.
 
 ## Run the checks
 

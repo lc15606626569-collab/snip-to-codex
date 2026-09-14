@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
-static class Settings {
+static partial class Settings {
     static string FilePath {get{return Path.Combine(Program.DataDir,"clipboard-only");}}
     public static bool AutoPaste {get{return !File.Exists(FilePath);}set{Directory.CreateDirectory(Program.DataDir);if(value){if(File.Exists(FilePath))File.Delete(FilePath);}else File.WriteAllText(FilePath,"1");}}
 }
@@ -24,10 +24,11 @@ static class Theme {
 }
 sealed class ModernButton:Button {
     bool hover;readonly bool primary;
+    public Color SurfaceColor=Color.Empty;
     public ModernButton(string text,bool prominent){Text=text;primary=prominent;FlatStyle=FlatStyle.Flat;FlatAppearance.BorderSize=0;Font=Theme.Body;Cursor=Cursors.Hand;SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint,true);AccessibleName=text;}
     protected override void OnMouseEnter(EventArgs e){hover=true;Invalidate();base.OnMouseEnter(e);}
     protected override void OnMouseLeave(EventArgs e){hover=false;Invalidate();base.OnMouseLeave(e);}
-    protected override void OnPaint(PaintEventArgs e){e.Graphics.Clear(Parent.BackColor);e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var r=new Rectangle(1,1,Width-3,Height-3);Theme.FillRound(e.Graphics,primary?(hover?Color.FromArgb(8,83,68):Theme.Accent):(hover?Color.FromArgb(226,235,240):Color.White),r,10);if(!primary)Theme.StrokeRound(e.Graphics,Theme.Line,r,10);TextRenderer.DrawText(e.Graphics,Text,Font,r,primary?Color.White:Theme.Ink,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);if(Focused)Theme.StrokeRound(e.Graphics,Theme.Mint,new Rectangle(4,4,Width-9,Height-9),8);}
+    protected override void OnPaint(PaintEventArgs e){e.Graphics.Clear(SurfaceColor.IsEmpty?Parent.BackColor:SurfaceColor);e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var r=new Rectangle(1,1,Width-3,Height-3);Theme.FillRound(e.Graphics,primary?(hover?Color.FromArgb(8,83,68):Theme.Accent):(hover?Color.FromArgb(226,235,240):Color.White),r,10);if(!primary)Theme.StrokeRound(e.Graphics,Theme.Line,r,10);TextRenderer.DrawText(e.Graphics,Text,Font,r,primary?Color.White:Theme.Ink,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);if(Focused)Theme.StrokeRound(e.Graphics,Theme.Mint,new Rectangle(4,4,Width-9,Height-9),8);}
 }
 sealed class RoundPanel:Panel {
     public RoundPanel(){DoubleBuffered=true;}
@@ -35,13 +36,16 @@ sealed class RoundPanel:Panel {
     protected override void OnPaint(PaintEventArgs e){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;Theme.StrokeRound(e.Graphics,Theme.Line,new Rectangle(0,0,Width-1,Height-1),12);base.OnPaint(e);}
 }
 sealed class WelcomeForm:Form {
-    readonly string shortcut; CheckBox autoPaste;
-    public WelcomeForm(string hotkey,Action capture){
+    string shortcut; CheckBox autoPaste;
+    public void SetShortcut(string value){shortcut=value;Invalidate();}
+    public WelcomeForm(string hotkey,Action capture,Action configure=null,Action floatingChanged=null){
         shortcut=hotkey;Text="截图到 Codex · 使用面板";Icon=Theme.MakeIcon();BackColor=Theme.Paper;Font=Theme.Body;StartPosition=FormStartPosition.CenterScreen;AutoScaleMode=AutoScaleMode.None;ClientSize=new Size(880,640);MinimumSize=Size;MaximumSize=Size;MaximizeBox=false;DoubleBuffered=true;
         var begin=new ModernButton("开始截图",true);begin.SetBounds(36,496,246,48);begin.Click+=(s,e)=>capture();Controls.Add(begin);
         var tutorial=new ModernButton("查看完整图文教程",false);tutorial.SetBounds(298,496,246,48);tutorial.Click+=(s,e)=>Theme.OpenGuide();Controls.Add(tutorial);
         var folder=new ModernButton("打开截图文件夹",false);folder.SetBounds(560,496,284,48);folder.Click+=(s,e)=>{Directory.CreateDirectory(Program.CaptureDir);Process.Start("explorer.exe",Program.CaptureDir);};Controls.Add(folder);
         autoPaste=new CheckBox();autoPaste.Text="截图后尝试自动粘贴到 Codex";autoPaste.Checked=Settings.AutoPaste;autoPaste.SetBounds(38,568,340,28);autoPaste.ForeColor=Theme.Ink;autoPaste.CheckedChanged+=(s,e)=>Settings.AutoPaste=autoPaste.Checked;Controls.Add(autoPaste);
+        var floating=new CheckBox();floating.Text="在对话输入栏旁显示小剪刀";floating.Checked=Settings.ShowScissors;floating.SetBounds(410,568,400,28);floating.ForeColor=Theme.Ink;floating.CheckedChanged+=(s,e)=>{Settings.ShowScissors=floating.Checked;if(floatingChanged!=null)floatingChanged();};Controls.Add(floating);
+        var change=new ModernButton("更改快捷键",false);change.SurfaceColor=Theme.Ink;change.SetBounds(688,213,136,44);change.Click+=(s,e)=>{if(configure!=null)configure();};Controls.Add(change);
         var tip=new Label();tip.Text="关闭此面板后，快捷键仍可使用。退出请右键托盘图标。";tip.ForeColor=Theme.Muted;tip.Font=Theme.Small;tip.AutoSize=false;tip.SetBounds(38,605,800,22);Controls.Add(tip);
     }
     protected override void OnPaint(PaintEventArgs e){
@@ -51,8 +55,8 @@ sealed class WelcomeForm:Form {
         Theme.Text(g,"框选画面，确认图片，再带着问题发送。第一次用？跟着下面三步走。",Theme.Body,Theme.Muted,new Rectangle(38,136,800,32));
         Theme.FillRound(g,Theme.Ink,new Rectangle(36,191,808,90),18);
         Theme.Text(g,"随时呼出截图",Theme.Body,Color.FromArgb(188,207,215),new Rectangle(60,211,280,26));
-        using(var f=new Font("Segoe UI",18,FontStyle.Bold))Theme.Text(g,shortcut,f,Theme.Mint,new Rectangle(420,213,395,46));
-        Theme.Text(g,"也可以点击下方「开始截图」",Theme.Small,Color.FromArgb(188,207,215),new Rectangle(60,245,340,22));
+        using(var f=new Font("Segoe UI",15,FontStyle.Bold))Theme.Text(g,shortcut,f,Theme.Mint,new Rectangle(330,215,350,46));
+        Theme.Text(g,"也可点击对话输入栏旁的小剪刀",Theme.Small,Color.FromArgb(188,207,215),new Rectangle(60,245,340,22));
         Card(g,36,"01","框选你要的画面","按快捷键，拖动鼠标选择区域。\nEsc 或右键可取消。 ");
         Card(g,310,"02","确认并放入输入框","按 Enter 或点击「完成」。\n看到图片缩略图，才算添加成功。");
         Card(g,584,"03","输入问题，再发送","例如：这条报错怎么解决？\n点击聊天软件的发送按钮。");
@@ -69,6 +73,16 @@ static class Preview {
         Rendering=true;
         Directory.CreateDirectory(dir);
         using(var f=new WelcomeForm("Ctrl + Alt + S",()=>{})) { f.StartPosition=FormStartPosition.Manual;f.Location=new Point(-20000,-20000);f.Show();Application.DoEvents();using(var b=new Bitmap(f.Width,f.Height)){f.DrawToBitmap(b,new Rectangle(Point.Empty,f.Size));b.Save(Path.Combine(dir,"welcome.png"),ImageFormat.Png);}f.Close(); }
+        using(var f=new ShortcutForm(HotkeyChoice.Default,c=>null)){f.StartPosition=FormStartPosition.Manual;f.Location=new Point(-20000,-20000);f.Show();Application.DoEvents();using(var b=new Bitmap(f.Width,f.Height)){f.DrawToBitmap(b,new Rectangle(Point.Empty,f.Size));b.Save(Path.Combine(dir,"shortcut-settings.png"),ImageFormat.Png);}f.Close();}
+        using(var b=new Bitmap(1000,270))using(var g=Graphics.FromImage(b)){
+            g.Clear(Theme.Paper);g.SmoothingMode=SmoothingMode.AntiAlias;
+            Theme.Text(g,"点击输入栏旁的小剪刀，直接框选。",Theme.Heading,Theme.Ink,new Rectangle(36,22,920,52));
+            Theme.Text(g,"示例位置 · 随输入栏移动，切到其他应用时隐藏",Theme.Small,Theme.Muted,new Rectangle(40,82,900,25));
+            Rectangle field=new Rectangle(42,128,842,96);Theme.FillRound(g,Color.White,field,18);Theme.StrokeRound(g,Theme.Line,field,18);
+            Theme.Text(g,"向 Codex 提问…",Theme.Body,Theme.Muted,new Rectangle(64,154,770,28));
+            Theme.FillRound(g,Theme.Ink,new Rectangle(896,150,40,40),13);ScissorsButton.DrawScissors(g,Theme.Mint,896,150);
+            b.Save(Path.Combine(dir,"scissors.png"),ImageFormat.Png);
+        }
         using(var icon=Theme.MakeIcon())using(var stream=File.Create(Path.Combine(dir,"app.ico")))icon.Save(stream);
         using(var b=new Bitmap(1200,780)){
             using(var g=Graphics.FromImage(b)){
