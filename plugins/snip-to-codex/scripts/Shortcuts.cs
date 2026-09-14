@@ -90,7 +90,7 @@ sealed class ScissorsButton:Form {
     public IntPtr Target;
     public ScissorsButton(Action<IntPtr> action){
         capture=action;Text="截图到 Codex · 小剪刀";AccessibleName="点击小剪刀，框选截图";AccessibleRole=AccessibleRole.PushButton;FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;ShowInTaskbar=false;TopMost=true;AutoScaleMode=AutoScaleMode.None;Size=new Size(40,40);BackColor=Theme.Paper;Cursor=Cursors.Hand;DoubleBuffered=true;
-        using(var path=Theme.Round(new Rectangle(0,0,40,40),13))Region=new Region(path);
+        using(var path=Theme.Round(new Rectangle(0,0,40,40),8))Region=new Region(path);
         hint=new ToolTip();hint.SetToolTip(this,"框选截图");
     }
     public void SetHint(string shortcut){hint.SetToolTip(this,"框选截图 · "+shortcut);}
@@ -100,8 +100,23 @@ sealed class ScissorsButton:Form {
     protected override void OnMouseEnter(EventArgs e){hover=true;Invalidate();base.OnMouseEnter(e);}
     protected override void OnMouseLeave(EventArgs e){hover=false;Invalidate();base.OnMouseLeave(e);}
     protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);if(e.Button==MouseButtons.Left&&ClientRectangle.Contains(e.Location)&&Target==Native.GetForegroundWindow()&&Bridge.IsTarget(Target))capture(Target);}
-    protected override void OnPaint(PaintEventArgs e){var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(hover?Theme.Accent:Theme.Ink);DrawScissors(g,hover?Color.White:Theme.Mint,0,0);base.OnPaint(e);}
-    public static void DrawScissors(Graphics g,Color color,int x,int y){using(var p=new Pen(color,1.8f)){p.StartCap=LineCap.Round;p.EndCap=LineCap.Round;g.DrawEllipse(p,x+9,y+9,8,8);g.DrawEllipse(p,x+9,y+23,8,8);g.DrawLine(p,x+16,y+15,x+30,y+29);g.DrawLine(p,x+16,y+25,x+30,y+11);}}
+    protected override void OnPaint(PaintEventArgs e){var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(hover?Color.FromArgb(239,239,239):Color.FromArgb(250,250,250));DrawScissors(g,hover?Color.FromArgb(51,51,51):Color.FromArgb(91,91,91),0,0);base.OnPaint(e);}
+    public static void DrawScissors(Graphics g,Color color,int x,int y){
+        var state=g.Save();g.TranslateTransform(x+8,y+9);
+        using(var p=new Pen(color,1.05f))using(var loops=new GraphicsPath()){
+            p.StartCap=LineCap.Round;p.EndCap=LineCap.Round;p.LineJoin=LineJoin.Round;
+            g.DrawLine(p,9.5f,2.6f,12.8f,11.1f);g.DrawLine(p,14.5f,2.6f,11.2f,11.1f);
+            loops.AddBezier(11.2f,11.1f,9.8f,10.2f,7.6f,10.9f,6.4f,13.5f);
+            loops.AddBezier(6.4f,13.5f,5.7f,15.1f,5.6f,17.4f,7.1f,18.0f);
+            loops.AddBezier(7.1f,18.0f,8.8f,18.7f,10.2f,17.3f,10.8f,15.7f);
+            loops.AddBezier(10.8f,15.7f,11.3f,14.2f,11.4f,12.7f,11.2f,11.1f);loops.CloseFigure();
+            loops.StartFigure();loops.AddBezier(12.8f,11.1f,14.3f,10.1f,16.4f,11.0f,17.5f,13.5f);
+            loops.AddBezier(17.5f,13.5f,18.2f,15.1f,18.3f,17.4f,16.8f,18.0f);
+            loops.AddBezier(16.8f,18.0f,15.1f,18.7f,13.8f,17.3f,13.2f,15.7f);
+            loops.AddBezier(13.2f,15.7f,12.7f,14.2f,12.6f,12.7f,12.8f,11.1f);loops.CloseFigure();
+            g.DrawPath(p,loops);
+        }g.Restore(state);
+    }
     protected override void Dispose(bool disposing){if(disposing)hint.Dispose();base.Dispose(disposing);}
 }
 

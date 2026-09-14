@@ -80,9 +80,10 @@ static class Preview {
             Theme.Text(g,"示例位置 · 随输入栏移动，切到其他应用时隐藏",Theme.Small,Theme.Muted,new Rectangle(40,82,900,25));
             Rectangle field=new Rectangle(42,128,842,96);Theme.FillRound(g,Color.White,field,18);Theme.StrokeRound(g,Theme.Line,field,18);
             Theme.Text(g,"向 Codex 提问…",Theme.Body,Theme.Muted,new Rectangle(64,154,770,28));
-            Theme.FillRound(g,Theme.Ink,new Rectangle(896,150,40,40),13);ScissorsButton.DrawScissors(g,Theme.Mint,896,150);
+            Theme.FillRound(g,Color.FromArgb(250,250,250),new Rectangle(896,150,40,40),8);ScissorsButton.DrawScissors(g,Color.FromArgb(91,91,91),896,150);
             b.Save(Path.Combine(dir,"scissors.png"),ImageFormat.Png);
         }
+        using(var b=new Bitmap(160,160))using(var g=Graphics.FromImage(b)){g.Clear(Color.FromArgb(250,250,250));g.SmoothingMode=SmoothingMode.AntiAlias;g.ScaleTransform(4,4);ScissorsButton.DrawScissors(g,Color.FromArgb(91,91,91),0,0);b.Save(Path.Combine(dir,"scissors-button.png"),ImageFormat.Png);}
         using(var icon=Theme.MakeIcon())using(var stream=File.Create(Path.Combine(dir,"app.ico")))icon.Save(stream);
         using(var b=new Bitmap(1200,780)){
             using(var g=Graphics.FromImage(b)){

@@ -21,6 +21,11 @@ The project includes Windows CI for compilation, selection tests, and packaging.
 - The scissors button was located next to the actual current desktop composer. Clicking it opened the capture overlay, hid the scissors, and Escape cancelled without saving an image.
 - Shortcut settings and welcome UI are rendered and inspected. Public button illustrations use synthetic input content.
 
+## Visual refresh in v1.2.1
+
+- The upright thin gray scissors and pale background were compiled, rendered, and visually compared with the provided reference.
+- No capture, positioning, or shortcut behavior was changed in this patch.
+
 ## Run the checks
 
 From the repository root in Windows PowerShell:
