@@ -1,6 +1,6 @@
 {
   "name": "snip-to-codex",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Windows region screenshots with a hotkey, clipboard attachment to Codex, and selected-image reading.",
   "author": {
     "name": "Local developer"

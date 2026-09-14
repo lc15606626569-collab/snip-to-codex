@@ -89,7 +89,7 @@ sealed class ScissorsButton:Form {
     readonly Action<IntPtr> capture;readonly ToolTip hint;bool hover;
     public IntPtr Target;
     public ScissorsButton(Action<IntPtr> action){
-        capture=action;Text="截图到 Codex · 小剪刀";AccessibleName="点击小剪刀，框选截图";AccessibleRole=AccessibleRole.PushButton;FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;ShowInTaskbar=false;TopMost=true;AutoScaleMode=AutoScaleMode.None;Size=new Size(40,40);BackColor=Theme.Paper;Cursor=Cursors.Hand;DoubleBuffered=true;
+        capture=action;Text="截图到 Codex · 小剪刀";AccessibleName="点击小剪刀，框选截图";AccessibleRole=AccessibleRole.PushButton;FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;ShowInTaskbar=false;TopMost=true;AutoScaleMode=AutoScaleMode.None;Size=new Size(40,40);BackColor=Color.White;Cursor=Cursors.Hand;DoubleBuffered=true;
         using(var path=Theme.Round(new Rectangle(0,0,40,40),8))Region=new Region(path);
         hint=new ToolTip();hint.SetToolTip(this,"框选截图");
     }
@@ -100,7 +100,7 @@ sealed class ScissorsButton:Form {
     protected override void OnMouseEnter(EventArgs e){hover=true;Invalidate();base.OnMouseEnter(e);}
     protected override void OnMouseLeave(EventArgs e){hover=false;Invalidate();base.OnMouseLeave(e);}
     protected override void OnMouseUp(MouseEventArgs e){base.OnMouseUp(e);if(e.Button==MouseButtons.Left&&ClientRectangle.Contains(e.Location)&&Target==Native.GetForegroundWindow()&&Bridge.IsTarget(Target))capture(Target);}
-    protected override void OnPaint(PaintEventArgs e){var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(hover?Color.FromArgb(239,239,239):Color.FromArgb(250,250,250));DrawScissors(g,hover?Color.FromArgb(51,51,51):Color.FromArgb(91,91,91),0,0);base.OnPaint(e);}
+    protected override void OnPaint(PaintEventArgs e){var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(Color.White);DrawScissors(g,hover?Color.FromArgb(51,51,51):Color.FromArgb(91,91,91),0,0);base.OnPaint(e);}
     public static void DrawScissors(Graphics g,Color color,int x,int y){
         var state=g.Save();g.TranslateTransform(x+8,y+9);
         using(var p=new Pen(color,1.05f))using(var loops=new GraphicsPath()){

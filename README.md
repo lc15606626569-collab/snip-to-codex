@@ -11,7 +11,7 @@ Windows 截图助手，附带首次使用引导、离线图文教程和可选 Co
 ## 普通用户：三分钟开始使用
 
 1. 打开本项目的 **Releases（发行版）**，进入最新版本。
-2. 在 **Assets** 下载 **SnipToCodex-v1.2.1-windows-x64.zip**，不要选择给开发者用的 Source code。
+2. 在 **Assets** 下载 **SnipToCodex-v1.2.2-windows-x64.zip**，不要选择给开发者用的 Source code。
 3. 右键 ZIP → **全部解压缩**。进入解压后的文件夹，双击 **Install.cmd**。
 4. 打开桌面的 **Snip to Codex**。先看软件里的三步引导，也可点击 **查看完整图文教程**。
 5. 打开想发送图片的 Codex / ChatGPT 对话，再显示要截图的画面。
